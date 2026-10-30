@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Biggest Number Hunt (Grade 2)</title>
+<style>
+:root{--h:#1e6fd9;--t:#2e9b57;--o:#e8820c;--ink:#1d2a3a;--ok:#2e7d4f;--rust:#b5470f;--gold:#ffc83d}
+*{box-sizing:border-box}
+body{margin:0;font-family:'Trebuchet MS','Segoe UI',Arial,sans-serif;background:linear-gradient(#d9efff,#f3fbff);color:var(--ink);min-height:100vh;padding:14px;display:flex;justify-content:center}
+#app{width:100%;max-width:980px}
+.card{background:#fff;border:4px solid var(--ink);border-radius:22px;padding:clamp(16px,3vw,30px);min-height:440px;box-shadow:0 8px 0 #b9d6ea}
+.center{text-align:center}
+h1{font-size:clamp(30px,6vw,60px);margin:.1em 0;line-height:1.05}
+h2{font-size:clamp(24px,4.5vw,44px);margin:.2em 0}
+p{font-size:clamp(18px,2.8vw,28px);line-height:1.4}
+.big{font-size:clamp(56px,11vw,110px);margin:0}
+button{font:inherit;font-size:clamp(18px,2.6vw,26px);font-weight:700;min-height:60px;padding:10px 22px;border-radius:16px;border:3px solid var(--ink);background:#fff;color:var(--ink);cursor:pointer}
+button:hover:not(:disabled){background:#fff3a8}
+button:focus-visible,input:focus-visible{outline:4px solid var(--h);outline-offset:2px}
+button.go{background:var(--gold)}button:disabled{opacity:.45;cursor:not-allowed}
+.row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:14px 0}
+.num{min-width:clamp(100px,17vw,150px);font-size:clamp(34px,7.5vw,68px);padding:14px 8px;border-width:4px;border-radius:20px;position:relative}
+.num.win{background:#d4f5dd;border-color:var(--ok)}
+.num.win::after{content:'👑';position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:40px}
+.h{color:var(--h)}.t{color:var(--t)}.o{color:var(--o)}
+.num .h,.num .t,.num .o{color:inherit}.col .h{color:var(--h)}.col .t{color:var(--t)}.col .o{color:var(--o)}
+.focus-h .t,.focus-h .o,.focus-t .h,.focus-t .o{opacity:.25}
+.score{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
+.pill{background:#fff;border:3px solid var(--ink);border-radius:999px;padding:4px 16px;font-weight:700;font-size:clamp(16px,2.4vw,22px)}
+.pill.on{background:var(--gold)}
+.banner{text-align:center;font-weight:700;font-size:clamp(18px,2.8vw,28px);background:#eaf5ff;border-radius:14px;padding:8px}
+.msg{min-height:2.6em;font-weight:700;font-size:clamp(18px,2.6vw,26px);text-align:center}
+.good{color:var(--ok)}.try{color:var(--rust)}
+.cap{background:#1d2a3acc;color:#fff;border-radius:12px;padding:10px 16px;font-size:clamp(18px,2.6vw,26px);text-align:center;margin-top:10px;min-height:3em}
+.legend{text-align:center;font-size:clamp(16px,2.4vw,22px)}
+input{font:inherit;font-size:20px;padding:10px;border-radius:12px;border:3px solid var(--ink);width:min(260px,100%)}
+@media (prefers-reduced-motion:no-preference){.pop{animation:pop .35s}@keyframes pop{from{transform:scale(.93);opacity:.5}to{transform:none;opacity:1}}}
+</style>
+</head>
+<body>
+<main id="app" aria-live="polite"></main>
+<script>
+const app=document.getElementById('app');
+const EX=[[126,115,142,120,107],[239,258,243,250,225],[365,415,380,446,398]];
+const Q=[[150,138,163,140,129],[173,205,189,231,211],[225,374,298,304,257],[304,335,207,294,351],[474,391,408,320,315],[420,382,329,376,431],[199,204,187,235,210],[300,200,400,500,100],[216,416,316,116,200],[399,500,499,199,299],[101,132,140,153,160],[174,306,480,349,205],[325,307,384,329,310],[425,380,462,483,405],[639,604,507,495,540],[315,319,317,316,318],[407,410,401,411,413],[248,250,251,249,247],[231,228,230,229,232],[460,459,458,456,457]];
+const ALL=[...EX.map(a=>({a,ex:1})),...Q.map(a=>({a}))];
+const BREAKS=[2,7,12,17];
+const BRAIN=['Stand up and stretch tall like a giraffe! 🦒','Take 3 slow breaths: in... and out.','Wiggle your fingers and shake your arms!','Have a sip of water. 💧'];
+let S={};
+const say=t=>{if(!('speechSynthesis' in window))return;speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t);u.rate=.9;speechSynthesis.speak(u)};
+const dig=n=>`<span class="h">${Math.floor(n/100)}</span><span class="t">${Math.floor(n/10)%10}</span><span class="o">${n%10}</span>`;
+function explain(a){let c=a.slice();const st=[];for(const [p,nm] of [[100,'hundreds'],[10,'tens'],[1,'ones']]){const d=c.map(n=>Math.floor(n/p)%10),m=Math.max(...d);const k=c.filter((n,i)=>d[i]===m);st.push(k.length===1?`Look at the ${nm}: ${m} is the most.`:`Look at the ${nm}: ${k.join(' and ')} tie with ${m}. Check the next place.`);c=k;if(c.length===1)break}return{ans:c[0],text:st.join(' ')+` So ${c[0]} is the biggest!`}}
+function score(){return `<div class="score">${S.teams.map((t,i)=>`<span class="pill ${S.teams.length>1&&i===S.t?'on':''}">${t.e} ${t.n}: ${t.s} ⭐</span>`).join('')}</div>`}
+function show(h){app.innerHTML=`<div class="card pop">${h}</div>`;app.querySelectorAll('.rd').forEach(b=>b.onclick=()=>say(b.dataset.t))}
+
+/* ---------- Welcome ---------- */
+function welcome(){
+  show(`<div class="center"><p class="big">👑🔢</p><h1>Biggest Number Hunt</h1><p>Grade 2 · Quantitative Reasoning</p>
+  <p>Who is playing?</p><div class="row"><button id="cl">⭐ Our whole class together</button><button id="tm">🔴🔵 Two teams</button></div>
+  <div id="tn" style="display:none"><p>Team names (you can change them):</p><div class="row"><input id="n1" value="Red Team" maxlength="14" aria-label="Team one name"><input id="n2" value="Blue Team" maxlength="14" aria-label="Team two name"></div></div>
+  <div class="row"><button class="go" id="vid">▶ Watch the lesson video</button><button id="skip">Skip to the game ➜</button></div></div>`);
+  let mode='class';const pick=m=>{mode=m;document.getElementById('tn').style.display=m==='teams'?'block':'none';document.getElementById('cl').style.background=m==='class'?'#ffc83d':'#fff';document.getElementById('tm').style.background=m==='teams'?'#ffc83d':'#fff'};
+  pick('class');document.getElementById('cl').onclick=()=>pick('class');document.getElementById('tm').onclick=()=>pick('teams');
+  const init=()=>{S={q:0,t:0,ft:0,teams:mode==='teams'?[{n:document.getElementById('n1').value||'Red Team',e:'🔴',s:0},{n:document.getElementById('n2').value||'Blue Team',e:'🔵',s:0}]:[{n:'Our Class',e:'⭐',s:0}]}};
+  document.getElementById('vid').onclick=()=>{init();video(0)};document.getElementById('skip').onclick=()=>{init();game()};
+}
+
+/* ---------- Narrated video ---------- */
+const row=(a,cls='',win)=>`<div class="row ${cls}" style="font-size:clamp(34px,7vw,64px);font-weight:700">${a.map(n=>`<span class="pill col" style="${n===win?'background:#d4f5dd;border-color:#2e7d4f':''}">${dig(n)}${n===win?' 👑':''}</span>`).join('')}</div>`;
+const SC=[
+ {h:'<p class="big">👑</p><h1>Find the BIGGEST number!</h1>',t:'Today we will find the biggest number in a group. Let us go!'},
+ {h:'<h2>Which number is the biggest?</h2>'+row(EX[0]),t:'Here are five numbers: 126, 115, 142, 120 and 107. Which one is the biggest? Let us look closely.'},
+ {h:'<h2>Step 1: Look at the HUNDREDS</h2>'+row(EX[0],'focus-h')+'<p class="legend">Blue = hundreds, green = tens, orange = ones</p>',t:'Step one. Look at the hundreds, the blue digit. Every number has 1 hundred. It is a tie! So we look at the tens.'},
+ {h:'<h2>Step 2: Look at the TENS</h2>'+row(EX[0],'focus-t')+'<p class="legend">2 · 1 · 4 · 2 · 0</p>',t:'Step two. Look at the tens, the green digit. We have 2, 1, 4, 2 and 0. Four tens is the most!'},
+ {h:'<h2>The winner!</h2>'+row(EX[0],'',142)+'<p>Hundreds first, then tens, then ones.</p>',t:'142 wears the crown! It is the biggest number. Remember: hundreds first, then tens, then ones. Now it is your turn!'}
+];
+let vt=null,vp=true;
+function video(i){
+  clearTimeout(vt);if(window.speechSynthesis)speechSynthesis.cancel();
+  if(i>=SC.length)return game();
+  const s=SC[i];
+  show(`<div class="center">${s.h}<div class="cap">${s.t}</div><div class="row"><button id="pp">${vp?'⏸ Pause':'▶ Play'}</button><button id="sk">Skip ➜</button></div><p style="font-size:16px">Scene ${i+1} of ${SC.length}</p></div>`);
+  document.getElementById('sk').onclick=()=>video(i+1);
+  document.getElementById('pp').onclick=()=>{vp=!vp;vp?video(i):(clearTimeout(vt),window.speechSynthesis&&speechSynthesis.cancel(),document.getElementById('pp').textContent='▶ Play')};
+  if(!vp)return;
+  const go=()=>{vt=setTimeout(()=>video(i+1),1300)};
+  if('speechSynthesis' in window){const u=new SpeechSynthesisUtterance(s.t);u.rate=.9;u.onend=go;u.onerror=go;speechSynthesis.speak(u)}else vt=setTimeout(()=>video(i+1),s.t.split(' ').length*450+2500);
+}
+
+/* ---------- Game ---------- */
+function game(){
+  if(S.q>=ALL.length)return finish();
+  const it=ALL[S.q],a=it.a,ex=!!it.ex,info=explain(a),tm=S.teams[S.t];
+  let wrong=0,col=ex,done=false;
+  const label=ex?`Example ${S.q+1} of 3`:`Question ${S.q-2} of 20`;
+  const prompt='Which number is the BIGGEST?';
+  const draw=()=>{
+    show(`${score()}<div class="banner">${label}${S.teams.length>1?` · ${tm.e} ${tm.n}, huddle together, then tap!`:' · Talk together, then tap!'}</div>
+    <h2 class="center">${prompt} 👑 <button class="rd" data-t="${prompt} ${a.join(', ')}">🔊</button></h2>
+    <div class="row">${a.map(n=>`<button class="num" data-n="${n}" ${done?'disabled':''}>${col?`<span class="col">${dig(n)}</span>`:n}</button>`).join('')}</div>
+    <div class="row">${done?'':'<button id="hi">💡 Hint</button>'}</div><div class="legend" ${col?'':'hidden'}>Blue = hundreds · Green = tens · Orange = ones</div>
+    <div class="msg" id="m"></div><div class="row" id="nx"></div>`);
+    app.querySelectorAll('.num').forEach(b=>{const n=+b.dataset.n;if(done&&n===info.ans)b.classList.add('win');if(b.dataset.dis)b.disabled=true;b.onclick=()=>pickNum(n,b)});
+    (S.dis||[]).forEach(n=>{const b=app.querySelector(`.num[data-n="${n}"]`);if(b)b.disabled=true});
+    const hi=document.getElementById('hi');if(hi)hi.onclick=()=>{col=true;draw();say('Compare the hundreds first, then the tens, then the ones.');document.getElementById('m').className='msg';document.getElementById('m').textContent='💡 Hundreds first, then tens, then ones!'};
+    if(done){const m=document.getElementById('m');m.className='msg good';m.textContent='🎉 '+info.text+(wrong===0?' (+1 ⭐)':'');document.getElementById('nx').innerHTML='<button class="go" id="go">Next ➜</button>';document.getElementById('go').onclick=nextQ;say(info.text)}
+  };
+  S.dis=[];
+  const pickNum=(n,b)=>{
+    if(n===info.ans){if(wrong===0&&!ex){tm.s++;S.ft++}done=true;draw();return}
+    wrong++;S.dis.push(n);if(wrong>=2)col=true;draw();
+    const m=document.getElementById('m');m.className='msg try';
+    m.textContent=wrong===1?'Not yet. Try again! 💡 Look at the HUNDREDS first. Which number has the most hundreds?':wrong===2?'Almost! Compare the blue digits, then the green ones.':'Peek: '+info.text.split(' So ')[0];
+  };
+  draw();
+}
+function nextQ(){
+  const was=S.q;S.q++;if(S.teams.length>1)S.t=(S.t+1)%S.teams.length;
+  if(BREAKS.includes(was)&&S.q<ALL.length){
+    const rd=was===2?'Examples complete!':`Round ${[7,12,17].indexOf(was)+1} complete!`;
+    show(`<div class="center"><p class="big">🌟</p><h1>${rd}</h1>${score()}<p>Brain break: ${BRAIN[Math.floor(Math.random()*BRAIN.length)]}</p><div class="row"><button class="go" id="gg">Keep going ➜</button></div></div>`);
+    document.getElementById('gg').onclick=game;
+  }else game();
+}
+function finish(){
+  const T=S.teams,tie=T.length>1&&T[0].s===T[1].s;
+  const best=T.length>1&&!tie?T.reduce((a,b)=>a.s>b.s?a:b):null;
+  show(`<div class="center"><p class="big">🏆</p><h1>${best?`${best.e} ${best.n} wins!`:tie?'It is a tie! Everyone wins!':'Amazing work, class!'}</h1>${score()}
+  <p>${S.ft} of 20 numbers found on the first try. Great teamwork! 👏</p><div class="row"><button class="go" id="ag">Play again 🔁</button><button id="vv">Watch the video again</button></div></div>`);
+  document.getElementById('ag').onclick=welcome;document.getElementById('vv').onclick=()=>{S.q=0;S.t=0;S.ft=0;S.teams.forEach(t=>t.s=0);vp=true;video(0)};
+}
+welcome();
+</script>
+</body>
+</html>
